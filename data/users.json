@@ -1,0 +1,52 @@
+{
+  "users": [
+    {
+      "id": "1763927257917",
+      "email": "test@example.com",
+      "password": "cGFzc3dvcmQxMjM=",
+      "name": "Test User",
+      "subscription": "premium",
+      "createdAt": "2025-11-23T19:47:37.917Z"
+    },
+    {
+      "id": "1763927420249",
+      "email": "newuser1763927420@example.com",
+      "password": "c2VjdXJlcGFzc3dvcmQxMjM=",
+      "name": "New Test User",
+      "subscription": "free",
+      "createdAt": "2025-11-23T19:50:20.249Z"
+    },
+    {
+      "id": "1763927454089",
+      "email": "newuser1763927454@example.com",
+      "password": "c2VjdXJlcGFzc3dvcmQxMjM=",
+      "name": "New Test User",
+      "subscription": "free",
+      "createdAt": "2025-11-23T19:50:54.089Z"
+    },
+    {
+      "id": "1763927653689",
+      "email": "demo@example.com",
+      "password": "ZGVtbzEyMw==",
+      "name": "Demo User",
+      "subscription": "free",
+      "createdAt": "2025-11-23T19:54:13.690Z"
+    },
+    {
+      "id": "1763928728663",
+      "email": "hello.dev.sr@gmail.com",
+      "password": "MTIz",
+      "name": "Jhon",
+      "subscription": "basic",
+      "createdAt": "2025-11-23T20:12:08.663Z"
+    },
+    {
+      "id": "1763931272847",
+      "email": "soikot.r1@gmail.com",
+      "password": "MTEyMg==",
+      "name": "Sharukh",
+      "subscription": "basic",
+      "createdAt": "2025-11-23T20:54:32.847Z"
+    }
+  ]
+}
