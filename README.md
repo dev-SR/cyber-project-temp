@@ -28,6 +28,8 @@ Visit http://localhost:3000
 
 - **[USER_GUIDE.md](./USER_GUIDE.md)** - How to use the application
 - **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)** - Technical details, API docs, architecture
+- **[ACADEMIC_DOCUMENTATION.md](./ACADEMIC_DOCUMENTATION.md)** - Academic project report (FURPS+, design, test plan/report) with a consolidated “Programming Task 2 Implementation” section
+- **[PROGRAMMING_TASK_2_REPORT.md](./PROGRAMMING_TASK_2_REPORT.md)** - Concise implementation details (≤10 pages) covering 3 ciphers (Encrypt & Decrypt) + Diffie–Hellman bonus
 
 ## 🎯 Key Components
 

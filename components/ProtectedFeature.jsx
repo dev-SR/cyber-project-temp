@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Lock } from 'lucide-react';
@@ -12,17 +12,47 @@ export default function ProtectedFeature({ featureId, requiredTier, children, fa
   const [currentTier, setCurrentTier] = useState('free');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
+  const refreshAccess = useCallback(() => {
     const token = getStoredToken();
     if (token) {
       const verification = verifyUserToken(token);
       if (verification.valid) {
         setCurrentTier(verification.tier);
         setHasAccess(hasFeatureAccess(verification.tier, featureId));
+      } else {
+        setCurrentTier('free');
+        setHasAccess(false);
       }
+    } else {
+      setCurrentTier('free');
+      setHasAccess(false);
     }
     setLoading(false);
   }, [featureId]);
+
+  useEffect(() => {
+    // Initial check
+    refreshAccess();
+
+    // Listen for token changes across the app
+    const onTokenUpdated = () => refreshAccess();
+    const onStorage = (e) => {
+      if (e.key === 'token') refreshAccess();
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') refreshAccess();
+    };
+
+    window.addEventListener('tokenUpdated', onTokenUpdated);
+    window.addEventListener('storage', onStorage);
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      window.removeEventListener('tokenUpdated', onTokenUpdated);
+      window.removeEventListener('storage', onStorage);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, [refreshAccess]);
 
   if (loading) {
     return (

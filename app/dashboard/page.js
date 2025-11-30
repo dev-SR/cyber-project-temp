@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import ProtectedFeature from '@/components/ProtectedFeature';
 
 const SUBSCRIPTION_TIERS = [
   {
@@ -55,6 +56,29 @@ export default function DashboardPage() {
     setUser(JSON.parse(storedUser));
   }, [router]);
 
+  // Keep dashboard in sync with subscription changes made elsewhere
+  useEffect(() => {
+    const refresh = () => {
+      const t = localStorage.getItem('token');
+      const uStr = localStorage.getItem('user');
+      if (t) setToken(t);
+      if (uStr) setUser(JSON.parse(uStr));
+    };
+
+    const onTokenUpdated = () => refresh();
+    const onStorage = (e) => {
+      if (e.key === 'token' || e.key === 'user') refresh();
+    };
+
+    window.addEventListener('tokenUpdated', onTokenUpdated);
+    window.addEventListener('storage', onStorage);
+
+    return () => {
+      window.removeEventListener('tokenUpdated', onTokenUpdated);
+      window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
   const handlePayment = async () => {
     if (!selectedTier) {
       setMessage({ type: 'error', text: 'Please select a subscription tier' });
@@ -84,6 +108,10 @@ export default function DashboardPage() {
         setUser(updatedUser);
         localStorage.setItem('user', JSON.stringify(updatedUser));
         localStorage.setItem('token', data.token);
+        // Notify app about token change so gated features update immediately
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new Event('tokenUpdated'));
+        }
         setToken(data.token);
       } else {
         setMessage({ type: 'error', text: data.error });
@@ -197,6 +225,55 @@ export default function DashboardPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Features Overview */}
+        <Card className="bg-slate-800 border-slate-700 mt-6">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-white">Features</CardTitle>
+                <CardDescription className="text-gray-400">Access depends on your subscription tier</CardDescription>
+              </div>
+              <Link href="/subscription">
+                <Button size="sm" className="bg-purple-600 hover:bg-purple-700 text-white border-0">Manage Subscription</Button>
+              </Link>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="p-4 bg-slate-900 rounded">
+                <h3 className="text-white font-semibold mb-2">Analytics</h3>
+                <ProtectedFeature featureId="basic_analytics_view" requiredTier="free"
+                  fallback={<p className="text-sm text-gray-400">Preview charts available. Upgrade for more.</p>}>
+                  <p className="text-sm text-gray-300">View dashboards and trends.</p>
+                </ProtectedFeature>
+                <Link href="/features/analytics">
+                  <Button size="sm" className="mt-3 bg-purple-600 hover:bg-purple-700">Open Analytics</Button>
+                </Link>
+              </div>
+              <div className="p-4 bg-slate-900 rounded">
+                <h3 className="text-white font-semibold mb-2">Content</h3>
+                <ProtectedFeature featureId="content_creation" requiredTier="basic"
+                  fallback={<p className="text-sm text-gray-400">Read-only preview on Free.</p>}>
+                  <p className="text-sm text-gray-300">Create and edit content.</p>
+                </ProtectedFeature>
+                <Link href="/features/content">
+                  <Button size="sm" className="mt-3 bg-purple-600 hover:bg-purple-700">Open Content</Button>
+                </Link>
+              </div>
+              <div className="p-4 bg-slate-900 rounded">
+                <h3 className="text-white font-semibold mb-2">Reports</h3>
+                <ProtectedFeature featureId="standard_reports" requiredTier="basic"
+                  fallback={<p className="text-sm text-gray-400">Limited reports on Free.</p>}>
+                  <p className="text-sm text-gray-300">Generate and export reports.</p>
+                </ProtectedFeature>
+                <Link href="/features/reports">
+                  <Button size="sm" className="mt-3 bg-purple-600 hover:bg-purple-700">Open Reports</Button>
+                </Link>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
         <Tabs defaultValue="subscription" className="w-full">
           <TabsList className="grid w-full grid-cols-2 bg-slate-800 mb-6">

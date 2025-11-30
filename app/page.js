@@ -8,6 +8,37 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import Link from 'next/link';
+import { getAllFeaturesWithAccess } from '@/lib/accessControl';
+
+function AvailableFeatures({ tier }) {
+  const features = getAllFeaturesWithAccess(tier);
+  return (
+    <div className="mt-4">
+      <h4 className="text-white font-semibold mb-2">Available Features</h4>
+      <ul className="grid grid-cols-1 md:grid-cols-2 gap-2">
+        {features.map(f => (
+          <li key={f.id} className={`flex items-center gap-2 p-2 rounded border ${f.available ? 'border-green-700 bg-green-900/20' : 'border-slate-700 bg-slate-900'}`}>
+            <span className="text-lg">
+              {f.icon}
+            </span>
+            <div className="flex-1">
+              <div className="text-gray-200 text-sm">{f.name}</div>
+              <div className="text-gray-400 text-xs">{f.description}</div>
+            </div>
+            {f.available ? (
+              <Badge className="bg-green-700">Unlocked</Badge>
+            ) : (
+              <Badge className="bg-slate-700">Locked</Badge>
+            )}
+          </li>
+        ))}
+      </ul>
+      <div className="mt-3 text-sm text-gray-400">
+        Explore: <Link href="/features/analytics" className="text-purple-400 hover:underline">Analytics</Link> • <Link href="/features/content" className="text-purple-400 hover:underline">Content</Link> • <Link href="/features/reports" className="text-purple-400 hover:underline">Reports</Link>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const [token, setToken] = useState('');
@@ -245,14 +276,18 @@ export default function Home() {
                       {JSON.stringify(decoded.payload, null, 2)}
                     </pre>
                     <Badge className="mt-2 bg-pink-600">Vigenère Cipher</Badge>
-                    {decoded.payload.exp && (
-                      <div className="mt-4 text-gray-400 text-sm">
-                        <p>Issued: {formatDate(decoded.payload.iat)}</p>
-                        <p>Expires: {formatDate(decoded.payload.exp)}</p>
+                    {decoded.payload && (
+                      <div className="mt-4 text-gray-400 text-sm space-y-2">
+                        {decoded.payload.iat && <p>Issued: {formatDate(decoded.payload.iat)}</p>}
+                        {decoded.payload.exp && <p>Expires: {formatDate(decoded.payload.exp)}</p>}
                         {decoded.payload.subscription && (
                           <p className="mt-2">
                             Subscription: <Badge className="ml-2 bg-blue-600">{decoded.payload.subscription}</Badge>
                           </p>
+                        )}
+                        {/* Available features based on subscription tier */}
+                        {decoded.payload.subscription && (
+                          <AvailableFeatures tier={decoded.payload.subscription} />
                         )}
                       </div>
                     )}

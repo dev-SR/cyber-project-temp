@@ -122,7 +122,7 @@ export default function SubscriptionPage() {
 			if (response.ok) {
 				setMessage({
 					type: 'success',
-					text: `Successfully upgraded to ${selectedTier.toUpperCase()}! Reloading features...`
+					text: `Successfully upgraded to ${selectedTier.toUpperCase()}! Your features have been updated.`
 				});
 
 				// Update local storage
@@ -133,13 +133,11 @@ export default function SubscriptionPage() {
 				localStorage.setItem('token', data.token);
 				setToken(data.token);
 
-				// Update features
+				// Update features locally and broadcast change so other pages update immediately
 				setAllFeatures(getAllFeaturesWithAccess(data.subscription));
-
-				// Refresh after 2 seconds
-				setTimeout(() => {
-					window.location.reload();
-				}, 2000);
+				if (typeof window !== 'undefined') {
+					window.dispatchEvent(new Event('tokenUpdated'));
+				}
 			} else {
 				setMessage({ type: 'error', text: data.error });
 			}

@@ -82,10 +82,12 @@ Each part is:
   "email": "user@example.com",
   "name": "User Name",
   "subscription": "free|basic|premium",
-  "iat": 1234567890,  // Issued at timestamp
-  "exp": 1234571490   // Expiration timestamp (1 hour)
+  "iat": 1234567890,
+  "exp": 1234571490
 }
 ```
+
+Note: iat = Issued-at UNIX timestamp; exp = Expiration UNIX timestamp (default 1 hour after iat).
 
 ## 🏗️ Project Structure
 
@@ -106,6 +108,72 @@ Each part is:
 │   └── db.js                        # JSON database operations
 └── data/
     └── users.json                   # User database
+```
+
+## 🏛️ High-Level Architecture
+
+```mermaid
+flowchart TB
+  user[User / Browser]
+  subgraph Frontend ["Next.js Frontend (Pages & Components)"]
+    home["Home (Token Decoder)"]
+    dashboard["Dashboard (Subscription & DH)"]
+    features["Features: Analytics / Content / Reports"]
+    subscription["Subscription Page"]
+    protected["ProtectedFeature (gating)"]
+    local[(localStorage: token, user)]
+  end
+
+  subgraph AppLibs ["Application Libraries"]
+    accessControl["lib/accessControl.js\n- FEATURES/DETAILS\n- verifyUserToken()\n- hasFeatureAccess()"]
+    token["lib/token.js\n- createToken()\n- verifyToken()\n- decodeToken()"]
+    ciphers["lib/crypto/*\n- groupSubstitution (header)\n- vigenere (payload)\n- transposition (signature)\n- diffieHellman (demo)"]
+  end
+
+  subgraph API ["Next.js API Routes"]
+    auth["/api/register\n/api/login"]
+    verify["/api/verify"]
+    payment["/api/payment (demo | stripe)"]
+    dh["/api/dh/generate\n/api/dh/shared-secret"]
+    db[(data/users.json)]
+    stripe[(Stripe):::ext]
+  end
+
+  classDef ext fill:#222,stroke:#999,color:#ccc
+
+  user --> home
+  user --> dashboard
+  user --> features
+  user --> subscription
+
+  home -->|read/paste| protected
+  dashboard --> protected
+  features --> protected
+  subscription --> protected
+
+  protected -->|verifyUserToken| accessControl
+  accessControl --> token
+  token --> ciphers
+
+  home -->|reads/writes| local
+  dashboard -->|reads/writes| local
+  subscription -->|reads/writes| local
+  protected -.->|"listen: tokenUpdated,\nstorage, visibilitychange"| protected
+
+  dashboard -->|fetch| auth
+  dashboard -->|fetch| payment
+  subscription -->|fetch| payment
+  home -->|fetch| verify
+  features -->|fetch (if needed)| verify
+
+  auth --> db
+  verify --> token
+  payment --> auth
+  payment --> db
+  payment --> stripe
+  auth -->|returns {user, token}| dashboard
+  payment -->|returns updated token| subscription
+  verify -->|returns validity & payload| home
 ```
 
 ## 🚀 Features
@@ -294,6 +362,91 @@ yarn dev
 
 Application runs on `http://localhost:3000`
 
+## 🔒 Authentication, Authorization, and Permissions — Detailed
+
+This section consolidates the practical details of the AAA model used throughout the application, with concrete flows, code references, and operational notes.
+
+### A. Authentication (Who you are)
+- Responsibility: API routes (/api/register, /api/login) validate credentials and issue a JWT‑like token.
+- Token issuance: lib/token.js → createToken(payload)
+  - Header: Group Substitution cipher → Base64 (no padding)
+  - Payload: Vigenère cipher → Base64; includes { userId, email, name, subscription, iat, exp }
+  - Signature: Transposition cipher over `${encodedHeader}.${encodedPayload}` → Base64
+- Storage (client):
+  - localStorage keys: 'token' (string) and 'user' (JSON)
+  - After login/upgrade, a custom event window.dispatchEvent(new Event('tokenUpdated')) is emitted to notify all tabs/components.
+- Logout:
+  - Remove 'token' and 'user' from localStorage; navigate to /auth.
+- Expiration and renewal:
+  - exp = iat + 3600s by default.
+  - When expired, verifyToken returns { valid: false, error: 'Token expired' } and the UI should redirect to /auth.
+  - Renewal is via re‑login or any flow that returns a new token (e.g., successful upgrade/payment).
+
+Example (server‑side pseudocode):
+- const user = db.findByEmail(email)
+- if (!user || !checkPassword(user, pw)) return 401
+- const token = createToken({ userId: user.id, email, name: user.name, subscription: user.subscription })
+- return { token, user: { id: user.id, email, name: user.name, subscription: user.subscription } }
+
+### B. Authorization (What you’re allowed to do)
+- Responsibility: Validate the token’s integrity and freshness before using its claims.
+- Core function: lib/token.js → verifyToken(token)
+  1) Split token into [encodedHeader, encodedPayload, encodedSignature]
+  2) Decrypt signature: base64Decode(encodedSignature) → transposition.decrypt → decryptedSig
+  3) Recompute expected = `${encodedHeader}.${encodedPayload}`; if mismatch → Invalid signature
+  4) Decrypt payload: base64Decode(encodedPayload) → vigenere.decrypt → JSON.parse
+  5) Check exp vs current time → expired if past
+  6) Return { valid, payload } or { valid: false, error }
+- Convenience: decodeToken(token) returns { header, payload, signature } for UI purposes (non‑authoritative without step 2/5).
+- Trust boundaries:
+  - Signature prevents client‑side tampering with header/payload parts.
+  - Time‑based expiry constrains token lifetime.
+
+### C. Permissions (Fine‑grained feature gating)
+- Policy source: lib/accessControl.js
+  - FEATURES: tier → [featureIds]
+  - FEATURE_DETAILS: metadata used for display
+  - hasFeatureAccess(tier, featureId): boolean
+  - verifyUserToken(token): combines verification + decoding and returns { valid, payload, header, tier }
+- UI enforcement: components/ProtectedFeature.jsx
+  - On mount:
+    - Read token from localStorage; verify via verifyUserToken
+    - currentTier = verification.tier (default 'free' if invalid/missing)
+    - hasAccess = hasFeatureAccess(currentTier, featureId)
+  - Render:
+    - If hasAccess → render children
+    - Else → render fallback or standard upgrade CTA linking to /subscription
+  - Real‑time sync listeners:
+    - 'tokenUpdated' custom event (emitted on login/upgrade)
+    - 'storage' event for 'token'/'user' keys (cross‑tab)
+    - 'visibilitychange' (re‑verify on focus)
+- Usage examples:
+  - <ProtectedFeature featureId="basic_analytics_view" requiredTier="free"> ... </ProtectedFeature>
+  - <ProtectedFeature featureId="content_creation" requiredTier="basic"> ... </ProtectedFeature>
+  - <ProtectedFeature featureId="advanced_reports" requiredTier="premium"> ... </ProtectedFeature>
+- Tier examples (see FEATURE_DETAILS for full list):
+  - free → basic_analytics_view, content_preview, limited_reports
+  - basic → + advanced_analytics, content_creation, standard_reports, export_csv
+  - premium → + real_time_analytics, content_editing, ai_content_generation, advanced_reports, export_pdf, custom_reports, api_access
+
+### D. Error handling and edge cases
+- Missing token: treat as anonymous; render only public/preview features with upgrade/login prompts.
+- Expired token: deny access with clear message; prompt re‑authentication.
+- Signature mismatch: deny access and suggest re‑login; indicates tampering.
+- Clock skew: in production, add leeway; demo uses strict comparison.
+- Storage cleared or blocked: UI gracefully falls back to free tier.
+
+### E. Security notes (educational scope)
+- Classical ciphers are not production‑grade; they make the pipeline auditable for learners.
+- LocalStorage is vulnerable to XSS; in production use HTTP‑only cookies, modern crypto (HMAC/RS256), and server/edge authorization.
+- Consider adding claims like iss/aud/sub/nbf for real systems and validate them on each request.
+
+Code references:
+- lib/token.js — createToken, verifyToken, decodeToken
+- lib/accessControl.js — FEATURES, FEATURE_DETAILS, hasFeatureAccess, verifyUserToken
+- components/ProtectedFeature.jsx — runtime gating logic
+- app/dashboard/page.js, app/subscription/page.js — token storage, upgrade flows, tokenUpdated dispatch
+
 ## 🧪 Testing
 
 ### Backend Testing
@@ -445,3 +598,47 @@ This project is for educational purposes.
 ---
 
 **Built with ❤️ using Next.js, Tailwind CSS, and custom cryptography**
+
+
+
+## Programming Task 2 — Implementation Mapping (Academic Overview)
+
+Date: 2025-11-29  
+Version: 1.0
+
+This project satisfies the Programming Task 2 requirement to implement at least three classical cryptographic methods with both Encrypt and Decrypt functions, integrated into a full token lifecycle and access‑controlled SaaS demonstration. A detailed academic write‑up is available in ACADEMIC_DOCUMENTATION.md under “0. Programming Task 2 Implementation — Consolidated Overview.” Below is a concise mapping to the codebase for quick reference.
+
+- Implemented Methods (Encrypt & Decrypt):
+  - Group Substitution Cipher — Header protection  
+    File: lib/crypto/groupSubstitution.js; used by lib/token.js createToken/decodeToken
+  - Vigenère Cipher — Payload protection  
+    File: lib/crypto/vigenere.js; used by lib/token.js createToken/verifyToken/decodeToken
+  - Transposition Cipher (Columnar) — Signature/integrity  
+    File: lib/crypto/transposition.js; used by lib/token.js createToken/verifyToken
+  - Bonus: Diffie–Hellman Key Exchange — parameter generation and shared secret  
+    File: lib/crypto/diffieHellman.js; surfaced in Dashboard (Diffie–Hellman tab)
+
+- Token Lifecycle
+  1) Creation: Header (Group Substitution) → Base64; Payload (Vigenère) → Base64; Signature = Transposition(Base64(header)+'.'+Base64(payload)) → Base64  
+     Source: lib/token.js → createToken
+  2) Verification: Decrypt signature (Transposition) and compare; decrypt payload (Vigenère); check exp  
+     Source: lib/token.js → verifyToken
+  3) Decoding for UI: Decrypt header (Group Substitution) and payload (Vigenère) for visualization  
+     Source: lib/token.js → decodeToken; app/page.js demo
+
+- Authentication, Authorization, Permissions (AAA)
+  - Authentication: /api/register and /api/login issue tokens; client persists 'token' and 'user' in LocalStorage
+  - Authorization: verifyToken enforces integrity (Transposition) and freshness (exp)
+  - Permissions: lib/accessControl.js defines tier→features policy; components/ProtectedFeature.jsx performs runtime gating and listens for 'tokenUpdated', 'storage', and 'visibilitychange' for real‑time synchronization
+
+- Feature Pages and Gating
+  - /features/analytics — Free/Basic/Premium sections gated via feature IDs
+  - /features/content — Preview (Free), Create (Basic), Edit & AI (Premium)
+  - /features/reports — Limited (Free), Standard + CSV (Basic), Advanced + PDF/Custom (Premium)
+
+- Testing & Validation
+  - Unit: test_encryption.js (cipher round‑trips and DH equality)
+  - Integration: backend_test.py (auth, payment/upgrade, verification)
+  - Results summary: test_result.md and README (16/16 API tests passed)
+
+For expanded narrative, architecture diagrams, FURPS+, and a step‑by‑step description of the algorithms and flows, see ACADEMIC_DOCUMENTATION.md (Section 0) and PROGRAMMING_TASK_2_REPORT.md (Sections 1–9).

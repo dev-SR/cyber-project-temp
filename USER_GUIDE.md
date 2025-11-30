@@ -79,6 +79,20 @@ Choose from three tiers:
 4. Share your public key with others
 5. Compute shared secrets securely!
 
+## Permissions & Feature Access
+
+- Your current plan determines which features are unlocked on the Dashboard and on /features/* pages.
+- Locked features show a clear message and an Upgrade button linking to /subscription.
+- Changes propagate instantly across pages and browser tabs:
+  - After login or successful upgrade, the app broadcasts a tokenUpdated event.
+  - Components listen to storage and visibilitychange to re-verify your tier in real time.
+- Quick mapping:
+  - Free → Basic Analytics, Content Preview, Limited Reports (7 days)
+  - Basic → + Advanced Analytics, Content Creation, Standard Reports (30 days), CSV Export
+  - Premium → + Real-time Analytics, Content Editing, AI Generation, Advanced Reports, PDF Export, Custom Builder, API Access
+
+Tip: To gate a new feature, we wrap the UI block in a ProtectedFeature component bound to a featureId and requiredTier.
+
 ## 🔐 Understanding Your Token
 
 Your token has three parts (like JWT):
