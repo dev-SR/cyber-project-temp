@@ -1,9 +1,9 @@
 // Test encryption algorithms
-import * as groupSubstitution from './lib/crypto/groupSubstitution.js';
-import * as vigenere from './lib/crypto/vigenere.js';
-import * as transposition from './lib/crypto/transposition.js';
-import * as diffieHellman from './lib/crypto/diffieHellman.js';
-import { createToken, verifyToken, decodeToken } from './lib/token.js';
+import * as groupSubstitution from '@/lib/crypto/groupSubstitution.js';
+import * as vigenere from '@/lib/crypto/vigenere.js';
+import * as transposition from '@/lib/crypto/transposition.js';
+import * as diffieHellman from '@/lib/crypto/diffieHellman.js';
+import { createToken, verifyToken, decodeToken } from '@/lib/token.js';
 
 console.log('=== Testing Encryption Algorithms ===\n');
 

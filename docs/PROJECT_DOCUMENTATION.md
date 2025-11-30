@@ -545,13 +545,13 @@ This project demonstrates:
 ### Creating and Verifying Tokens
 
 ```javascript
-import { createToken, verifyToken } from './lib/token';
+import {createToken, verifyToken} from './token';
 
 // Create token
 const payload = {
-  userId: '123',
-  email: 'user@example.com',
-  subscription: 'premium'
+    userId: '123',
+    email: 'user@example.com',
+    subscription: 'premium'
 };
 const token = createToken(payload);
 

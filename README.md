@@ -4,32 +4,32 @@ A Next.js demonstration of JWT-like token system with **custom-implemented class
 
 ## ✨ Features
 
-- 🔒 **Custom Encryption**: Group Substitution, Vigenère, and Transposition ciphers implemented from scratch
-- 🎫 **JWT-like Tokens**: header.payload.signature structure with base64 encoding
-- 👤 **User Authentication**: Registration, login, and token-based auth
-- 💳 **Subscription System**: Free, Basic, Premium tiers with demo and Stripe payment options
-- 🔑 **Diffie-Hellman**: Key exchange protocol demonstration
-- 🎨 **Modern UI**: Dark theme with Tailwind CSS and shadcn/ui components
-- 🧪 **Token Decoder**: JWT.io-style interface for decoding and verifying tokens
+- 🔒 Custom Encryption: Group Substitution, Vigenère, and Transposition ciphers implemented from scratch (no external crypto libs)
+- 🎫 JWT-like Tokens: header.payload.signature structure with base64 encoding
+- 👤 User Authentication: Registration, login, and token-based auth
+- 💳 Subscription System: Free, Basic, Premium tiers with demo and Stripe payment options
+- 🧩 Tier-based Feature Gating: Unlocks capabilities per plan using the ProtectedFeature component and lib/accessControl.js policy mapping
+- 📄 Feature Pages: /features/analytics, /features/content, /features/reports — each page applies tier-based functionality
+- 🔁 Real-time Subscription Sync: Instant UI updates across tabs via tokenUpdated event, storage, and visibilitychange listeners
+- 🧪 Enhanced Token Decoder: Home page decodes header/payload/signature, highlights subscription tier, and lists Unlocked/Locked features
+- 🔑 Diffie–Hellman: Key exchange protocol demonstration
+- 🎨 Modern UI: Dark theme with Tailwind CSS and shadcn/ui components
 
 ## 🚀 Quick Start
 
 ```bash
 # Install dependencies
+npm install
 yarn install
+pnpm install
 
 # Start development server
+npm dev
 yarn dev
+pnpm dev
 ```
 
 Visit http://localhost:3000
-
-## 📖 Documentation
-
-- **[USER_GUIDE.md](./USER_GUIDE.md)** - How to use the application
-- **[PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)** - Technical details, API docs, architecture
-- **[ACADEMIC_DOCUMENTATION.md](./ACADEMIC_DOCUMENTATION.md)** - Academic project report (FURPS+, design, test plan/report) with a consolidated “Programming Task 2 Implementation” section
-- **[PROGRAMMING_TASK_2_REPORT.md](./PROGRAMMING_TASK_2_REPORT.md)** - Concise implementation details (≤10 pages) covering 3 ciphers (Encrypt & Decrypt) + Diffie–Hellman bonus
 
 ## 🎯 Key Components
 
@@ -40,9 +40,19 @@ Visit http://localhost:3000
 4. **Diffie-Hellman** - Secure key exchange protocol
 
 ### Application Pages
-- **Home (/)** - Token decoder and verifier
-- **/auth** - Login and registration
-- **/dashboard** - Subscription management and DH key exchange
+- **Home (/)** — Token decoder and verifier; highlights subscription tier and shows an Available Features list with Unlocked/Locked indicators; quick links to feature pages
+- **/auth** — Login and registration
+- **/dashboard** — Account info, token display, tier‑gated feature previews with Open buttons; Manage Subscription CTA; Diffie–Hellman tab
+- **/subscription** — Choose plan, run demo payment, and unlock features dynamically after upgrade
+- **/features/analytics** — Interactive charts with tier‑based functionality (Free: preview, Basic: advanced, Premium: real‑time)
+- **/features/content** — Content preview/create/edit with AI generation depending on tier
+- **/features/reports** — Limited/Standard/Advanced reports with CSV/PDF export and a custom builder by tier
+
+### Access Control and Real-time Sync
+- Policy: Tier → features mapping defined in lib/accessControl.js (FEATURES + FEATURE_DETAILS)
+- Enforcement: ProtectedFeature component verifies token, checks access, and conditionally renders or shows upgrade prompts
+- Token Verification: Transposition signature check, then Vigenère payload decryption; expiration enforced
+- Live Updates: App reacts instantly to subscription changes via window tokenUpdated event, storage, and visibilitychange listeners
 
 ### API Endpoints
 - `POST /api/register` - User registration
@@ -51,20 +61,6 @@ Visit http://localhost:3000
 - `POST /api/payment` - Subscription payment
 - `POST /api/dh/generate` - Generate DH key pair
 - `POST /api/dh/shared-secret` - Compute shared secret
-
-## 🧪 Testing
-
-All backend APIs tested with 100% success rate:
-- ✅ 16/16 tests passed
-- ✅ Authentication flow
-- ✅ Token creation and verification
-- ✅ Payment processing
-- ✅ Diffie-Hellman key exchange
-
-```bash
-# Run encryption tests
-node test_encryption.js
-```
 
 ## 🔐 Token Structure
 
@@ -85,15 +81,6 @@ eyIsd2c4TXciRiI1TUY3LkEuQy...  (payload)
 .
 dG5KMzg4ZHl3akpGaEdLRWRNS...  (signature)
 ```
-
-## 💡 Educational Value
-
-This project demonstrates:
-- Classical cryptography algorithms
-- Token-based authentication systems
-- Subscription and payment models
-- Full-stack Next.js development
-- Secure key exchange protocols
 
 ## 📚 Tech Stack
 
@@ -150,4 +137,10 @@ Built with ❤️ using:
 
 **Start exploring cryptography today!** 🚀
 
-For detailed documentation, see [PROJECT_DOCUMENTATION.md](./PROJECT_DOCUMENTATION.md)
+## 📖 Documentation
+
+- Project Documentation (with High‑Level Architecture Mermaid diagram): [docs/PROJECT_DOCUMENTATION.md](docs/PROJECT_DOCUMENTATION.md)
+- Academic Project Report: [docs/ACADEMIC_DOCUMENTATION.md](docs/ACADEMIC_DOCUMENTATION.md)
+- Programming Task 2 Report: [docs/PROGRAMMING_TASK_2_REPORT.md](docs/PROGRAMMING_TASK_2_REPORT.md)
+- User Guide: [docs/USER_GUIDE.md](docs/USER_GUIDE.md)
+- Test Results and scripts: [docs/test_result.md](docs/test_result.md), [docs/test_encryption.js](docs/test_encryption.js)
